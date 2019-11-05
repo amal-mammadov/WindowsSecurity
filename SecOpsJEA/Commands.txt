@@ -1,0 +1,37 @@
+# Create a folder for PowerShell module
+CD "C:\Program Files\WindowsPowerShell\Modules"
+New-Item -ItemType Directory -Path .\SecOpsJEA
+
+# Create an empty script module and module manifest.
+# At least one file in the module folder must have the same name as the folder itself.
+CD "C:\Program Files\WindowsPowerShell\Modules\SecOpsJEA"
+New-Item -ItemType File -Path .\SecOpsJEA.psm1
+New-ModuleManifest -Path .\SecOpsJEA.psd1 -RootModule “SecOpsJEA.psm1”
+
+# Create the RoleCapabilities folder and PSRC file
+New-Item -ItemType Directory -Path .\RoleCapabilities
+New-PSRoleCapabilityFile -Path .\RoleCapabilities\MonitoringAdminsRole.psrc
+Notepad .\RoleCapabilities\MonitoringAdminsRole.psrc
+
+#Create a session configuration file
+New-PSSessionConfigurationFile -SessionType RestrictedRemoteServer -Path .\MonitoringAdminsEndpoint.pssc -Full
+Notepad .\MonitoringAdminsEndpoint.pssc
+
+#Test a session configuration file
+Test-PSSessionConfigurationFile -Path  .\MonitoringAdminsEndpoint.pssc
+
+#Registering JEA Configurations
+Register-PSSessionConfiguration -Path .\MonitoringAdminsEndpoint.pssc -Name 'JEAMonitoringAdmins' -Force
+
+#List the names of the endpoints on a system
+Get-PSSessionConfiguration | Select-Object Name | Format-List
+
+#UnRegistering JEA Configurations if needed
+Unregister-PSSessionConfiguration -Name JEAMonitoringAdmins
+
+#It maybe neccessary to restart WinRM service for configurationt to get applied
+Restart-Service -Name WinRM
+
+#Testing JEA Endpoint
+$NonAdminCred = Get-Credential
+Enter-PSSession -ComputerName Host02 -ConfigurationName JEAMonitoringAdmins -Credential $NonAdminCred
